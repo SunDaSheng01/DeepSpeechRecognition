@@ -24,7 +24,7 @@ def data_hparams():
     return params
 
 
-class get_data():
+class get_data():　＃定义获取数据的类
     def __init__(self, args):
         self.data_type = args.data_type
         self.data_path = args.data_path
@@ -73,9 +73,9 @@ class get_data():
                 self.pny_lst.append(pny.split(' '))
                 self.han_lst.append(han.strip('\n'))
         if self.data_length:
-            self.wav_lst = self.wav_lst[:self.data_length]
-            self.pny_lst = self.pny_lst[:self.data_length]
-            self.han_lst = self.han_lst[:self.data_length]
+            self.wav_lst = self.wav_lst[:self.data_length]　　＃获取语音的列表
+            self.pny_lst = self.pny_lst[:self.data_length]　　＃获取拼音的列表
+            self.han_lst = self.han_lst[:self.data_length]　　　＃　获取汉字的列表
         print('make am vocab...')
         self.am_vocab = self.mk_am_vocab(self.pny_lst)
         print('make lm pinyin vocab...')
@@ -83,7 +83,7 @@ class get_data():
         print('make lm hanzi vocab...')
         self.han_vocab = self.mk_lm_han_vocab(self.han_lst)
 
-    def get_am_batch(self):
+    def get_am_batch(self):　　　＃　获取声学模型的一批次数据
         shuffle_list = [i for i in range(len(self.wav_lst))]
         while 1:
             if self.shuffle == True:
@@ -93,9 +93,9 @@ class get_data():
                 label_data_lst = []
                 begin = i * self.batch_size
                 end = begin + self.batch_size
-                sub_list = shuffle_list[begin:end]
+                sub_list = shuffle_list[begin:end]　　＃增加扰动。使得更加鲁棒？？
                 for index in sub_list:
-                    fbank = compute_fbank(self.data_path + self.wav_lst[index])
+                    fbank = compute_fbank(self.data_path + self.wav_lst[index])　　＃　计算频谱特征
                     pad_fbank = np.zeros((fbank.shape[0] // 8 * 8 + 8, fbank.shape[1]))
                     pad_fbank[:fbank.shape[0], :] = fbank
                     label = self.pny2id(self.pny_lst[index], self.am_vocab)
@@ -113,9 +113,9 @@ class get_data():
                 outputs = {'ctc': np.zeros(pad_wav_data.shape[0], )}
                 yield inputs, outputs
 
-    def get_lm_batch(self):
+    def get_lm_batch(self):　　＃　获取语言模型的一批次数据
         batch_num = len(self.pny_lst) // self.batch_size
-        for k in range(batch_num):
+        for k in range(batch_num):　　
             begin = k * self.batch_size
             end = begin + self.batch_size
             input_batch = self.pny_lst[begin:end]
@@ -127,13 +127,17 @@ class get_data():
                 [self.han2id(line, self.han_vocab) + [0] * (max_len - len(line)) for line in label_batch])
             yield input_batch, label_batch
 
-    def pny2id(self, line, vocab):
+    def pny2id(self, line, vocab):　　＃　拼音转索引
         return [vocab.index(pny) for pny in line]
 
-    def han2id(self, line, vocab):
+    def han2id(self, line, vocab):　　＃汉字转索引
         return [vocab.index(han) for han in line]
 
-    def wav_padding(self, wav_data_lst):
+
+　＃每一个batch_size内的数据有一个要求，就是需要构成成一个tensorflow块，这就要求每个样本数据形式是一样的。
+    ＃ 除此之外，ctc需要获得的信息还有输入序列的长度。
+   ＃这里输入序列经过卷积网络后，长度缩短了8倍，因此我们训练实际输入的数据为wav_len//8。
+    def wav_padding(self, wav_data_lst):　＃　语音的填充，长度不够就用０填充？
         wav_lens = [len(data) for data in wav_data_lst]
         wav_max_len = max(wav_lens)
         wav_lens = np.array([leng // 8 for leng in wav_lens])
@@ -142,7 +146,7 @@ class get_data():
             new_wav_data_lst[i, :wav_data_lst[i].shape[0], :, 0] = wav_data_lst[i]
         return new_wav_data_lst, wav_lens
 
-    def label_padding(self, label_data_lst):
+    def label_padding(self, label_data_lst):　　＃　标签的填充
         label_lens = np.array([len(label) for label in label_data_lst])
         max_label_len = max(label_lens)
         new_label_data_lst = np.zeros((len(label_data_lst), max_label_len))
@@ -150,7 +154,7 @@ class get_data():
             new_label_data_lst[i][:len(label_data_lst[i])] = label_data_lst[i]
         return new_label_data_lst, label_lens
 
-    def mk_am_vocab(self, data):
+    def mk_am_vocab(self, data):　＃　获的声学模型的所用字典，为label建立拼音到id的映射，即词典 有了词典就能将读取到的label映射到对应的id
         vocab = []
         for line in tqdm(data):
             line = line
@@ -160,7 +164,7 @@ class get_data():
         vocab.append('_')
         return vocab
 
-    def mk_lm_pny_vocab(self, data):
+    def mk_lm_pny_vocab(self, data):　＃获取语言模型所用的汉字字典
         vocab = ['<PAD>']
         for line in tqdm(data):
             for pny in line:
@@ -218,7 +222,7 @@ def compute_fbank(file):
     return data_input
 
 
-# word error rate------------------------------------
+# word error rate------------------------------------计算单词间的距离
 def GetEditDistance(str1, str2):
 	leven_cost = 0
 	s = difflib.SequenceMatcher(None, str1, str2)
